@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Exit when any command fails
+# Ref: https://stackoverflow.com/a/821419
+set -e
+
+dpg_extension="dpg"
+
+# Get branch name
+# Ref: https://stackoverflow.com/a/1593487
+branch="$(git symbolic-ref --short HEAD)"
+
+if [[ $branch != *.${dpg_extension} ]]; then
+	echo "ERROR: Branch $branch is not a doppelganger!" >&2
+	exit 1
+fi
+
+dpg_branch=$branch
+original_branch=${branch%.$dpg_extension}
+
+# Ref: https://stackoverflow.com/a/949391
+if [ $(git rev-parse $dpg_branch) == $(git rev-parse $original_branch) ]; then
+	# Doppelganger and original branch have not diverged
+	# Just commit and make them both point to new commit
+	git commit
+	git branch -f $original_branch $dpg_branch
+else
+	# Doppelganger and original branch have diverged
+	# Commit to both branches
+	git commit
+	git switch $original_branch
+	git cherry-pick $dpg_branch
+	git switch $dpg_branch
+fi
+

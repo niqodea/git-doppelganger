@@ -1,0 +1,59 @@
+#!/bin/bash
+
+read -r dpg_branch original_branch <<< "$(./get-branches)"
+
+if [ -z "$(git diff $original_branch $dpg_branch)" ]; then
+	echo "Original and doppelganger do not differ, no action required"
+elif [ "$(git rev-parse $original_branch)" == "$(git rev-parse $dpg_branch~)" ]; then
+	echo "Original is parent of doppelganger, fast-forwarding original"
+	git branch --force $original_branch $dpg_branch
+else
+	num_stash_entries=0
+
+	# Stash tracked files
+	if [ -n "$(git diff --name-only)" ]; then
+		# Some tracked files have been modified
+		git stash --message "Tracked files"
+		(( num_stash_entries += 1 ))
+	fi
+
+	# Also stash untracked files that would lead to conflict when switching to original
+	# We do not want to naively stash all untracked files as some of them might be too
+	# large to be stored as a git object, which would take a lot of time
+	dpg_untracked_files=$(git ls-files --others --exclude-standard)
+	original_tracked_files=$(git ls-tree -r --name-only $original_branch)
+	# Intersect the two set of files to find conflicting files
+	untracked_conflicting_files=$( \
+		comm -12 \
+		<(echo $dpg_untracked_files | tr " " "\n") \
+		<(echo $original_tracked_files | tr " " "\n") \
+	)
+	if [ -n "$untracked_conflicting_files" ]; then
+		# Some untracked files would cause conflicts
+		echo $untracked_conflicting_files | \
+			xargs git stash push --include-untracked \
+			--message "Untracked conflicting files"
+		(( num_stash_entries += 1 ))
+	fi
+
+	git switch $original_branch
+
+	if [ -z "$(git diff $original_branch $dpg_branch~)" ]; then
+		echo "Original and doppelganger differ by doppelganger's last commit, cherry-picking"
+		git cherry-pick $dpg_branch
+	else
+		echo "Original and doppelganger differ, committing diff"
+		git diff $original_branch $dpg_branch | git apply --index -
+		# We want to show the diff to the user when writing the commit message
+		git commit --verbose
+	fi
+
+	git switch $dpg_branch
+
+	# Restore stash
+	for i in $(seq 1 $num_stash_entries); do
+		echo "Popping stash entry ($i/$num_stash_entries)"
+		git stash pop 2>&1 > /dev/null
+	done
+fi
+

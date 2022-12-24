@@ -1,0 +1,12 @@
+#!/bin/bash
+
+./check
+
+branches=$(./dpg-before)
+dpg_branch=$(echo "$branches" | awk 'NR==1')
+original_branch=$(echo "$branches" | awk 'NR==2')
+
+git commit --amend
+
+./update-original
+

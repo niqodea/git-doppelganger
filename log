@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Check validity of the doppelganger branch
+
+# Exit when any command fails
+# Ref: https://stackoverflow.com/a/821419
+set -e
+
+dpg_extension="dpg"
+
+# Get branch name
+# Ref: https://stackoverflow.com/a/1593487
+branch="$(git symbolic-ref --short HEAD)"
+
+if [[ $branch != *.${dpg_extension} ]]; then
+	echo "ERROR: Branch $branch is not a doppelganger!" >&2
+	exit 1
+fi
+
+original_branch=${branch%.$dpg_extension}
+
+git log $original_branch
+

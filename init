@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Initialize a doppelganger branch
+
+# Exit when any command fails
+# Ref: https://stackoverflow.com/a/821419
+set -e
+
+dpg_extension="dpg"
+
+# Get branch name
+# Ref: https://stackoverflow.com/a/1593487
+branch="$(git symbolic-ref --short HEAD)"
+
+if [[ $branch == *.${dpg_extension} ]]; then
+	echo "ERROR: Branch $branch is already a doppelganger!" >&2
+	exit 1
+fi
+
+echo Creating doppelganger of current branch ${branch}
+git switch -c ${branch}.dpg
+
