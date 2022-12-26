@@ -71,7 +71,7 @@ fi
 # Switch to the original branch to update it
 git switch $original_branch
 
-if [ -n $new_dpg_base_commit ]; then
+if [ -n "$new_dpg_base_commit" ]; then
     git merge --no-commit $new_dpg_base_commit
 fi
 
@@ -83,12 +83,12 @@ git restore --staged --worktree $repo_root_directory
 echo "$diff" | git apply --index -
 
 # Commit changes
-if [ -z $commit_message ]; then
+if [ -z "$commit_message" ]; then
     # Request the commit message from the user
     # Also show the user the diff with --verbose when writing the message
     git commit --verbose
 else
-    git commit -m $commit_message
+    git commit -m "$commit_message"
 fi
 
 git switch $current_branch
