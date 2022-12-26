@@ -1,59 +1,103 @@
 #!/bin/bash
 
-read -r dpg_branch original_branch <<< "$(./get-branches)"
+new_dpg_base_commit=""
+commit_message=""
 
-if [ -z "$(git diff $original_branch $dpg_branch)" ]; then
-	echo "Original and doppelganger do not differ, no action required"
-elif [ "$(git rev-parse $original_branch)" == "$(git rev-parse $dpg_branch~)" ]; then
-	echo "Original is parent of doppelganger, fast-forwarding original"
-	git branch --force $original_branch $dpg_branch
+while getopts "b:m:" opt; do
+    case $opt in
+        b)
+            new_dpg_base_commit=$OPTARG
+            ;;
+        m)
+            commit_message=$OPTARG
+            ;;
+        \?)
+            exit 1
+            ;;
+    esac
+done
+
+shift $((OPTIND - 1))
+
+original_branch=$1
+old_dpg_commit=$2
+new_dpg_commit=$3
+
+if [[ -z $original_branch || -z $old_dpg_commit || -z $new_dpg_commit ]]; then
+    echo "Error: some of the mandatory arguments are missing" >&2
+    echo "original_branch: $original_branch"
+    echo "old_dpg_commit: $old_dpg_commit"
+    echo "new_dpg_commit: $new_dpg_commit"
+    exit 1
+fi
+
+diff=$(git diff $old_dpg_commit $new_dpg_commit)
+if [ -z "$diff" ]; then
+    echo "No difference between old and new doppelganger, no need to update original"
+    exit 0
+fi
+
+current_branch=$(git symbolic-ref --short HEAD)
+
+# We need to switch to original branch to make changes
+# To do so in an automated way, we need to stash all files that would cause conflicts
+# We will optionally use stash multiple times, so we need a counter
+num_stash_entries=0
+
+# For simplicity, stash all tracked modified files
+if [ -n "$(git diff --name-only)" ]; then
+    git stash --message "Tracked files"
+    (( num_stash_entries += 1 ))
+fi
+
+# Also stash untracked files that would lead to conflict when switching to original
+# We do not want to naively stash all untracked files as some of them might be too
+# large to be stored as a git object, which would take a lot of time
+untracked_files=$(git ls-files --others --exclude-standard)
+original_tracked_files=$(git ls-tree -r --name-only $original_branch)
+# Intersect the two set of files to find conflicting files
+untracked_conflicting_files=$( \
+    comm -12 \
+    <(echo "$untracked_files") \
+    <(echo "$original_tracked_files") \
+)
+if [ -n "$untracked_conflicting_files" ]; then
+    echo $untracked_conflicting_files | \
+        xargs git stash push --include-untracked \
+        --message "Untracked conflicting files"
+    (( num_stash_entries += 1 ))
+fi
+
+# Switch to the original branch to update it
+git switch $original_branch
+
+if [ -n $new_dpg_base_commit ]; then
+    git merge --no-commit $new_dpg_base_commit
+fi
+
+# Restore state of the repository without aborting the merge, if any
+repo_root_directory=$(git rev-parse --show-toplevel)
+git restore --staged --worktree $repo_root_directory
+
+# Apply the diff and stage it
+echo "$diff" | git apply --index -
+
+# Commit changes
+if [ -z $commit_message ]; then
+    # Request the commit message from the user
+    # Also show the user the diff with --verbose when writing the message
+    git commit --verbose
 else
-	num_stash_entries=0
+    git commit -m $commit_message
+fi
 
-	# Stash tracked files
-	if [ -n "$(git diff --name-only)" ]; then
-		# Some tracked files have been modified
-		git stash --message "Tracked files"
-		(( num_stash_entries += 1 ))
-	fi
+git switch $current_branch
 
-	# Also stash untracked files that would lead to conflict when switching to original
-	# We do not want to naively stash all untracked files as some of them might be too
-	# large to be stored as a git object, which would take a lot of time
-	dpg_untracked_files=$(git ls-files --others --exclude-standard)
-	original_tracked_files=$(git ls-tree -r --name-only $original_branch)
-	# Intersect the two set of files to find conflicting files
-	untracked_conflicting_files=$( \
-		comm -12 \
-		<(echo $dpg_untracked_files | tr " " "\n") \
-		<(echo $original_tracked_files | tr " " "\n") \
-	)
-	if [ -n "$untracked_conflicting_files" ]; then
-		# Some untracked files would cause conflicts
-		echo $untracked_conflicting_files | \
-			xargs git stash push --include-untracked \
-			--message "Untracked conflicting files"
-		(( num_stash_entries += 1 ))
-	fi
-
-	git switch $original_branch
-
-	if [ -z "$(git diff $original_branch $dpg_branch~)" ]; then
-		echo "Original and doppelganger differ by doppelganger's last commit, cherry-picking"
-		git cherry-pick $dpg_branch
-	else
-		echo "Original and doppelganger differ, committing diff"
-		git diff $original_branch $dpg_branch | git apply --index -
-		# We want to show the diff to the user when writing the commit message
-		git commit --verbose
-	fi
-
-	git switch $dpg_branch
-
-	# Restore stash
-	for i in $(seq 1 $num_stash_entries); do
-		echo "Popping stash entry ($i/$num_stash_entries)"
-		git stash pop 2>&1 > /dev/null
-	done
+# Restore stash
+if (( $num_stash_entries > 0 )); then
+    for i in $(seq 1 $num_stash_entries); do
+        echo "Popping stash entry ($i/$num_stash_entries)"
+        git stash pop 2>&1 > /dev/null
+    done
 fi
 
