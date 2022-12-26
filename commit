@@ -1,35 +1,16 @@
 #!/bin/bash
 
-# Exit when any command fails
-# Ref: https://stackoverflow.com/a/821419
-set -e
+original_branch=$(./get-original)
 
-dpg_extension="dpg"
+old_dpg_commit=$(git rev-parse HEAD)
 
-# Get branch name
-# Ref: https://stackoverflow.com/a/1593487
-branch="$(git symbolic-ref --short HEAD)"
+git commit
 
-if [[ $branch != *.${dpg_extension} ]]; then
-	echo "ERROR: Branch $branch is not a doppelganger!" >&2
-	exit 1
-fi
+new_dpg_commit=$(git rev-parse HEAD)
 
-dpg_branch=$branch
-original_branch=${branch%.$dpg_extension}
+# Get the commit message
+# The first line of git rev-list contains the commit hash, so we drop it with sed
+message=$(git rev-list --format=%B --max-count=1 $new_dpg_commit | sed "1d")
 
-# Ref: https://stackoverflow.com/a/949391
-if [ $(git rev-parse $dpg_branch) == $(git rev-parse $original_branch) ]; then
-	# Doppelganger and original branch have not diverged
-	# Just commit and make them both point to new commit
-	git commit
-	git branch -f $original_branch $dpg_branch
-else
-	# Doppelganger and original branch have diverged
-	# Commit to both branches
-	git commit
-	git switch $original_branch
-	git cherry-pick $dpg_branch
-	git switch $dpg_branch
-fi
+./update-original -m $message $original_branch $old_dpg_commit $new_dpg_commit
 
