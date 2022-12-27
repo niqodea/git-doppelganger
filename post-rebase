@@ -1,4 +1,20 @@
 #!/bin/bash
 
-echo haha
+original_branch=$1
+old_dpg_commit=$2
+rebasing_commit=$3
+
+new_dpg_commit=$(git rev-parse HEAD)
+
+# Figure out whether the rebasing commit is a new base for the doppelganger
+# First of all, find the old doppelganger base commit
+old_dpg_base_commit=$(git merge-base $original_branch $old_dpg_commit)
+if [ $old_dpg_base_commit = $(git merge-base $rebasing_commit $old_dpg_base_commit) ]; then
+    # The rebasing commit has the old doppelganger base commit as ancestor
+    # Therefore, it is not a new base
+    ./update-original $original_branch $old_dpg_commit $new_dpg_commit
+else
+    # Otherwise, it is a new base
+    ./update-original -b $rebasing_commit $original_branch $old_dpg_commit $new_dpg_commit
+fi
 

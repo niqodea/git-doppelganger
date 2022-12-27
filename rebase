@@ -1,21 +1,11 @@
 #!/bin/bash
 
-./check
+rebasing_commit=$(git rev-parse $1)
 
-branches=$(./get-branches)
-dpg_branch=$(echo "$branches" | awk 'NR==1')
-original_branch=$(echo "$branches" | awk 'NR==2')
+original_branch=$(./get-original)
+old_dpg_commit=$(git rev-parse HEAD)
 
-git rebase $1
+export GIT_SEQUENCE_EDITOR="./rebase-editor $original_branch $old_dpg_commit $rebasing_commit"
 
-git commit --amend
-
-# Ref: https://stackoverflow.com/a/17324759
-git switch -c $dpg_branch.tmp
-git reset --soft $original_branch
-git switch $original_branch
-git branch -d $dpg_branch.tmp
-git commit
-git switch $dpg_branch
-git merge $original_branch
+git rebase --interactive $rebasing_commit
 

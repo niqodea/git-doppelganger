@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Get the name of the instruction file
-instruction_file=$1
+original_branch=$1
+old_dpg_commit=$2
+rebasing_commit=$3
+instruction_file=$4
 
 # Open the instruction file in the default text editor and let the user edit it
 $(git config --global core.editor) $instruction_file
@@ -9,6 +11,7 @@ $(git config --global core.editor) $instruction_file
 if grep -Ev '^\s*(#|$)' $instruction_file > /dev/null; then
 	# Instructions file does not contain only comments or empty lines and is therefore valid
 	# Add a command to run the post-rebase script at the end of the rebase
-	echo "exec /Users/nd/git-projects/doppelganger/post-rebase" >> $instruction_file
+    # Preceding the command with `git rebase --continue` is a hacky way to end the rebase before executing the script
+	echo "exec git rebase --continue; ./post-rebase $original_branch $old_dpg_commit $rebasing_commit" >> $instruction_file
 fi
 
