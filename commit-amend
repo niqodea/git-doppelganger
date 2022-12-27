@@ -1,12 +1,12 @@
 #!/bin/bash
 
-./check
+original_branch=$(./get-original)
 
-branches=$(./dpg-before)
-dpg_branch=$(echo "$branches" | awk 'NR==1')
-original_branch=$(echo "$branches" | awk 'NR==2')
+old_dpg_commit=$(git rev-parse HEAD)
 
 git commit --amend
 
-./update-original
+new_dpg_commit=$(git rev-parse HEAD)
+
+./update-original $original_branch $old_dpg_commit $new_dpg_commit
 
