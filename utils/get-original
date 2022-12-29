@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -eu
+
+if ! branch=$(git symbolic-ref --short HEAD); then
+    # HEAD does not point to a branch
+    exit 0
+fi
+
+dpg_extension="dpg"
+
+if [[ $branch != *.$dpg_extension ]]; then
+    # Branch is not a doppelganger
+    exit 0
+fi
+
+original_branch=${branch%.$dpg_extension}
+if git rev-parse --verify $original_branch &> /dev/null; then
+    echo $original_branch
+else
+    >&2 "Error: Branch $dpg_branch has no corresponding original"
+    exit 1
+fi
+

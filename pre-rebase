@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -eu
+
+dpg_hooks_dir=$(git rev-parse --git-dir)/hooks/doppelganger
+
+original_branch=$($dpg_hooks_dir/utils/get-original)
+if [ -z "$original_branch" ]; then
+    exit 0  # We are not in a doppelganger branch
+fi
+
+if ! git diff --quiet $dpg_branch $original_branch; then
+    >&2 echo "Error: doppelganger and original have different working trees."
+    >&2 echo "Make sure to align the branches before rebasing doppelganger."
+    exit 1
+fi
+
+context_file=$dpg_hooks_dir/context/pre-rebase
+> $context_file  # Clear the file of old context
+
+old_dpg_base_commit=$(git merge-base HEAD $original_branch)
+echo "$old_dpg_base_commit" >> $context_file
+old_dpg_commit=$(git rev-parse HEAD)
+echo "$old_dpg_commit" >> $context_file
+

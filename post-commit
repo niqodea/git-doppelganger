@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -eu
+
+dpg_hooks_dir=$(git rev-parse --git-dir)/hooks/doppelganger
+
+original_branch=$($dpg_hooks_dir/utils/get-original)
+if [ -z "$original_branch" ]; then
+    exit 0  # We are not in a doppelganger branch
+fi
+
+if [ git diff --quiet HEAD~ $original_branch ]; then
+    # The new commit contains the difference between doppelganger and original
+    # Update original branch with a copy of it
+
+    # Extract the message from the new commit
+    # The first line of git rev-list contains the commit hash, so we drop it with sed
+    message=$(git rev-list --format=%B --max-count=1 HEAD | sed "1d")
+
+    git diff HEAD~ HEAD | $dpg_hooks_dir/utils/update-original -m $message $original_branch
+else
+    # Otherwise compute the difference and apply it to original
+    git diff $original_branch HEAD | $dpg_hooks_dir/utils/update-original $original_branch
+fi
+

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -eu
+
+dpg_hooks_dir=$(git rev-parse --git-dir)/hooks/doppelganger
+
+original_branch=$($dpg_hooks_dir/utils/get-original)
+if [ -z "$original_branch" ]; then
+    exit 0  # We are not in a doppelganger branch
+fi
+
+if ! git diff --quiet HEAD $original_branch; then
+    >&2 echo "Error: doppelganger and original have different working trees."
+    >&2 echo "Make sure to align the branches before committing to doppelganger."
+    exit 1
+fi
+

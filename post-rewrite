@@ -1,0 +1,26 @@
+#!/bin/bash
+
+rewrite_type=$1
+
+set -eu
+
+dpg_hooks_dir=$(git rev-parse --git-dir)/hooks/doppelganger
+
+original_branch=$($dpg_hooks_dir/utils/get-original)
+if [ -z "$original_branch" ]; then
+    exit 0  # We are not in a doppelganger branch
+fi
+
+case $rewrite_type
+    rebase)  # git rebase
+        pre_rebase_context_file=$dpg_hooks_dir/context/pre-rebase
+        read -r -d "\n" old_dpg_base_commit old_dpg_commit < $pre_rebase_context_file
+        # TODO
+
+        $dpg_hooks_dir/utils/update-original -b $rebasing_commit $original_branch $old_dpg_commit $new_dpg_commit
+        ;;
+    amend)  # git commit --amend
+        :  # Taken care of in post-commit
+        ;;
+esac
+
