@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -eu
+
+diff=$(cat)
+
+branches_to_merge=$1
+commit_message=$2
+
+if [ -n "$branches_to_merge" ]; then
+    echo $branches_to_merge | xargs git merge --no-commit
+    # Restore state of the repository without aborting the merge
+    repo_root_directory=$(git rev-parse --show-toplevel)
+    git restore --staged --worktree $repo_root_directory
+fi
+
+# Apply the diff and stage it
+echo "$diff" | git apply --index
+
+# Commit changes
+if [ -n "$commit_message" ]; then
+    git commit -m "$commit_message"
+else
+    # Request the commit message from the user
+    # Also show the user the diff with --verbose when writing the message
+    git commit --verbose
+fi
+

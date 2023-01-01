@@ -1,0 +1,44 @@
+#!/bin/bash
+
+set -eu
+
+# NOTE: as of now these functions do not preserve staged changes, all existing changes become
+# unstaged after restoring the stash.
+
+target_branch=$1
+
+{
+    if ! git diff --quiet HEAD; then
+        tracked_stash=1
+        git stash --message "Tracked files"
+    else
+        tracked_stash=0
+    fi
+
+    # Also stash untracked files that would lead to conflict when switching to target branch
+    # We do not want to naively stash all untracked files as some of them might be too
+    # large to be stored as a git object, which would take a lot of time
+    untracked_files=$(git ls-files --others --exclude-standard)
+    target_tracked_files=$(git ls-tree -r --name-only $target_branch)
+    # Intersect the two set of files to find conflicting files
+    untracked_conflicting_files="$( \
+        comm -12 \
+        <(echo "$untracked_files") \
+        <(echo "$target_tracked_files") \
+    )"
+    if [ -n "$untracked_conflicting_files" ]; then
+        untracked_stash=1
+        echo $untracked_conflicting_files | \
+            xargs git stash push --include-untracked \
+            --message "Untracked conflicting files"
+    else
+        untracked_stash=0
+    fi
+
+    # Using checkout works even during a rebase
+    git checkout $target_branch --
+} > /dev/null
+
+# Return information serving as input to switch=back
+echo $tracked_stash $untracked_stash
+

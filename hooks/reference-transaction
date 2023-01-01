@@ -1,0 +1,43 @@
+#!/bin/bash
+
+set -eu
+
+utils_dir=$(dirname $0)/utils
+
+if [ $1 != "committed" ]; then
+    exit 0  # We only act after the reference changed
+fi
+
+head_prefix="refs/heads/"
+dpg_suffix=".dpg"
+
+while IFS=' ' read -r old_commit new_commit ref
+do
+    if [[ $ref != $head_prefix*$dpg_suffix ]]; then
+        # Ref is not a doppelganger
+        continue
+    fi
+
+    dpg_branch=${ref#$head_prefix}
+    original_branch=${dpg_branch%$dpg_suffix}
+
+    if ! git rev-parse --verify $original_branch &> /dev/null; then
+        >&2 echo "Error: Branch $dpg_branch has no corresponding original"
+        continue
+    fi
+
+    diff=$(git diff --binary $original_branch $dpg_branch)
+    commit_message=$($utils_dir/commit-message $dpg_branch $original_branch)
+    branches_to_merge=$($utils_dir/branches-to-merge $dpg_branch $original_branch)
+
+    if [[ -z "$diff" && -z "$branches_to_merge" ]]; then
+        echo "No difference between $dpg_branch and original, no need to update"
+        continue
+    fi
+
+    switch_back_args=$($utils_dir/switch $original_branch)
+    echo "$diff" | $utils_dir/update-original "$branches_to_merge" "$commit_message"
+    $utils_dir/switch-back $switch_back_args
+
+done
+

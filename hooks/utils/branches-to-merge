@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -eu
+
+dpg_branch=$1
+original_branch=$2
+
+dpg_merged_branches="$( \
+    git for-each-ref --merged $dpg_branch --format="%(refname:short)" refs/heads \
+)"
+original_merged_branches="$( \
+    git for-each-ref --merged $original_branch --format="%(refname:short)" refs/heads \
+)"
+
+# Find branches that are merged only in the doppelganger
+branches_to_merge="$( \
+    echo "$( \
+        comm -23 \
+        <(echo "$dpg_merged_branches") \
+        <(echo "$original_merged_branches") \
+    )" | sed "\|$dpg_branch|d"
+)"
+
+echo "$branches_to_merge"
+

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -eu
+
+dpg_branch=$1
+original_branch=$2
+
+if git diff --quiet $dpg_branch~ $original_branch; then
+    # The new commit contains the difference between doppelganger and original
+    # Reuse the message in the new commit
+    # The first line of git rev-list contains the commit hash, so we drop it with sed
+    commit_message=$(git rev-list --format=%B --max-count=1 $dpg_branch | sed "1d")
+    echo "$commit_message"
+fi
+
