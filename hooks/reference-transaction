@@ -1,0 +1,49 @@
+#!/bin/bash
+
+set -eu
+
+utils_dir=$(dirname $0)/utils
+
+if [ $1 != "committed" ]; then
+    exit 0  # We only act after the reference changed
+fi
+
+head_prefix="refs/heads/"
+dpg_suffix=".dpg"
+
+while IFS=' ' read -r old_commit new_commit ref
+do
+    if [[ $ref != $head_prefix*$dpg_suffix ]]; then
+        # Ref is not a doppelganger
+        continue
+    fi
+
+    if [ $old_commit = $new_commit ]; then
+        # Not an actual update, e.g. happens after stashing for some reason
+        continue
+    fi
+
+    dpg_branch=${ref#$head_prefix}
+    original_branch=${dpg_branch%$dpg_suffix}
+
+
+    if ! git rev-parse --verify $original_branch &> /dev/null; then
+        >&2 echo "Error: Branch $dpg_branch has no corresponding original"
+        continue
+    fi
+
+    dpg_tree=$(git rev-parse $dpg_branch^{tree})
+    original_tree=$(git rev-parse $original_branch^{tree})
+    branches_to_merge=$($utils_dir/branches-to-merge $dpg_branch $original_branch)
+
+    if [ $dpg_tree = $original_tree ] && [ -z "$branches_to_merge" ]; then
+        echo "No difference between $dpg_branch and original, no need to update"
+        continue
+    fi
+
+    commit_message_file=$($utils_dir/commit-message $dpg_branch $original_branch "$branches_to_merge")
+
+    $utils_dir/update-original $original_branch $commit_message_file "$branches_to_merge" $dpg_tree
+
+done
+

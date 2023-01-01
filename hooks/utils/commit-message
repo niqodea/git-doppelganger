@@ -1,0 +1,60 @@
+#!/bin/bash
+
+set -eu
+
+dpg_branch=$1
+original_branch=$2
+branches_to_merge=$3
+
+git_dir=$(git rev-parse --git-dir)
+commit_message_file=$git_dir/DPG_ORIGINAL_UPDATE_MSG
+> $commit_message_file
+echo $commit_message_file  # We return this file, we update it with the message below
+
+dpg_commit_parent_tree=$(git rev-parse $dpg_branch~^{tree})
+original_commit_tree=$(git rev-parse $original_branch^{tree})
+
+if [ $dpg_commit_parent_tree = $original_commit_tree ]; then
+    # The new commit contains the difference between doppelganger and original
+    # Reuse the message in the commit to update original
+    # The first line of git rev-list contains the commit hash, so we drop it with sed
+    commit_message=$(git rev-list --format=%B --max-count=1 $dpg_branch | sed "1d")
+    printf '%s' "$commit_message" >> $commit_message_file
+    exit 0
+fi
+
+cat >> $commit_message_file <<EOF
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Updating $original_branch to align with doppelganger
+#
+# ------------------------ >8 ------------------------
+# Do not modify or remove the line above.
+# Everything below it will be ignored.
+#
+EOF
+
+if [ -n "$branches_to_merge" ]; then
+    echo "# Merging branches: $(echo "$branches_to_merge" | tr '\n' ' ')" >> $commit_message_file
+fi
+
+dpg_commit_tree=$(git rev-parse $dpg_branch^{tree})
+if [ $dpg_commit_tree != $original_commit_tree ]; then
+    echo "# Below are the changes introduced by this commit" >> $commit_message_file
+    git diff $original_branch $dpg_branch >> $commit_message_file
+else
+    echo "# No changes introduced by this commit"
+fi 
+
+vim $commit_message_file < /dev/tty > /dev/tty  # Connect vim to the terminal
+
+# Remove everything below scissor line, as well as any commented line
+# To do this, we use a temporary file to avoid overwriting the file while we process it
+# sed does have an in-place option, but the syntax differs between mac OS and Linux
+# Ref: https://stackoverflow.com/a/32005218
+temp_file=$(mktemp)
+cat $commit_message_file | sed '/^#.*-- >8 --.*/,$d' | sed '/^#/d' > $temp_file
+cat $temp_file > $commit_message_file
+

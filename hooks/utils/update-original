@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -eu
+
+original_branch=$1
+commit_message_file=$2
+branches_to_merge=$3
+update_tree=$4
+
+parents=$original_branch$'\n'$branches_to_merge
+
+parent_args="-p $original_branch"
+for branch in $branches_to_merge; do
+    parent_args+=" -p $branch"
+done
+
+update_commit=$(git commit-tree $parent_args -F $commit_message_file $update_tree)
+git update-ref -m "Doppelganger automatic update" refs/heads/$original_branch $update_commit
+
+echo "Successfully updated branch $original_branch to align with doppelganger"
+
