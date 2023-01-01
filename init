@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Initialize a doppelganger branch
+
+set -eu
+
+dpg_suffix=".dpg"
+
+branch="$(git symbolic-ref --short HEAD)"
+
+if [[ $branch == *$dpg_suffix ]]; then
+	>&2 echo "Error: Branch $branch is already a doppelganger!"
+	exit 1
+fi
+
+dpg_branch=$branch$dpg_suffix
+
+echo Creating doppelganger of current branch $branch
+git switch -c $dpg_branch
+
