@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Show git log of original branch
+
+set -eu
+
+dpg_suffix=".dpg"
+
+branch="$(git symbolic-ref --short HEAD)"
+
+if [[ $branch != *$dpg_suffix ]]; then
+	>&2 echo "Error: Branch $branch is not a doppelganger!"
+	exit 1
+fi
+
+original_branch=${branch%$dpg_suffix}
+
+git log $original_branch
+
