@@ -13,12 +13,41 @@ original_merged_branches="$( \
 )"
 
 # Find branches that are merged only in the doppelganger
+# We discard the doppelganger itself as we do not want to merge that in original
 branches_to_merge="$( \
     echo "$( \
         comm -23 \
         <(echo "$dpg_merged_branches") \
         <(echo "$original_merged_branches") \
     )" | sed "\|$dpg_branch|d"
+)"
+
+# Some branches will be ancestors of other branches, we discard them
+ancestor_branches=""
+for branch in $branches_to_merge; do
+    if echo "$ancestor_branches" | grep -Fq $branch; then
+        continue
+    fi
+
+    for other_branch in $branches_to_merge; do
+        if [ $other_branch = $branch ]; then
+            continue
+        fi
+        if echo "$ancestor_branches" | grep -Fq $other_branch; then
+            continue
+        fi
+        if [ -n "$(git branch $branch --contains $other_branch)" ]; then
+            ancestor_branches+="$other_branch"$'\n'
+        fi
+    done
+done
+
+branches_to_merge="$( \
+    echo "$( \
+        comm -23 \
+        <(echo "$branches_to_merge") \
+        <(echo "$ancestor_branches" | sort) \
+    )"
 )"
 
 echo "$branches_to_merge"

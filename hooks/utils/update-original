@@ -4,25 +4,20 @@ set -eu
 
 diff=$(cat)
 
-branches_to_merge=$1
-commit_message=$2
+original_branch=$1
+commit_message_file=$2
+branches_to_merge=$3
+update_tree=$4
 
-if [ -n "$branches_to_merge" ]; then
-    echo $branches_to_merge | xargs git merge --no-commit
-    # Restore state of the repository without aborting the merge
-    repo_root_directory=$(git rev-parse --show-toplevel)
-    git restore --staged --worktree $repo_root_directory
-fi
+parents=$original_branch$'\n'$branches_to_merge
 
-# Apply the diff and stage it
-echo "$diff" | git apply --index
+parent_args="-p $original_branch"
+for branch in $branches_to_merge; do
+    parent_args+=" -p $branch"
+done
 
-# Commit changes
-if [ -n "$commit_message" ]; then
-    git commit -m "$commit_message"
-else
-    # Request the commit message from the user
-    # Also show the user the diff with --verbose when writing the message
-    git commit --verbose
-fi
+update_commit=$(git commit-tree $parent_args -F $commit_message_file $update_tree)
+git update-ref -m "Doppelganger automatic update" refs/heads/$original_branch $update_commit
+
+echo "Successfully updated branch $original_branch to align with doppelganger"
 
