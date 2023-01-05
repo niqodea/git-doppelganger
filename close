@@ -1,0 +1,31 @@
+#!/bin/bash
+
+set -eu
+
+dpg_suffix=".dpg"
+
+branch="$(git symbolic-ref --short HEAD)"
+
+if [[ $branch != *$dpg_suffix ]]; then
+    >&2 echo "Error: Branch $branch is not a doppelganger!"
+    exit 1
+fi
+
+dpg_branch=$branch
+original_branch=${branch%$dpg_suffix}
+
+# TODO: Add call to check before running close
+
+if ! git diff --staged --quiet; then
+    >&2 echo "Error: you have staged changes"
+    exit 1
+fi
+
+git update-ref -m "Closing doppelganger" refs/heads/$original_branch $dpg_branch
+git switch $original_branch
+git branch -D $dpg_branch
+
+# TODO: Implement other close strategies
+# - Merge the original and dpg in a single commit
+# - Discard doppelganger instead
+
