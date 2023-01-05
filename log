@@ -13,7 +13,7 @@ if [[ $branch != *$dpg_suffix ]]; then
 	exit 1
 fi
 
-original_branch=${branch%.$dpg_suffix}
+original_branch=${branch%$dpg_suffix}
 
 git log $original_branch
 
