@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -eu
+
+repository=$1  # usually "origin"
+
+head_prefix="refs/heads/"
+dpg_suffix=".dpg"
+
+while IFS=' ' read -r local_ref local_commit remote_ref remote_commit
+do
+    if [[ $local_ref != $head_prefix*$dpg_suffix ]]; then
+        # Ref is not a doppelganger
+        continue
+    fi
+
+    dpg_branch=${local_ref#$head_prefix}
+    original_branch=${dpg_branch%$dpg_suffix}
+
+    git push $repository $original_branch
+done
+
