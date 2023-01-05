@@ -2,8 +2,6 @@
 
 set -eu
 
-diff=$(cat)
-
 original_branch=$1
 commit_message_file=$2
 branches_to_merge=$3
