@@ -1,0 +1,45 @@
+#!/bin/bash
+
+set -eu
+
+dpg_suffix=".dpg"
+
+branch="$(git symbolic-ref --short HEAD)"
+
+if [[ $branch != *$dpg_suffix ]]; then
+	>&2 echo "Error: Branch $branch is not a doppelganger!"
+	exit 128
+fi
+
+dpg_branch=$branch
+original_branch=${branch%$dpg_suffix}
+
+dpg_tree=$(git rev-parse $dpg_branch^{tree})
+original_tree=$(git rev-parse $original_branch^{tree})
+if [ $dpg_tree != $original_tree ]; then
+    echo "Trees of original and doppelganger are not the same"
+    exit 1
+fi
+
+dpg_merged_branches="$( \
+    git for-each-ref --merged $dpg_branch --format="%(refname:short)" refs/heads \
+)"
+original_merged_branches="$( \
+    git for-each-ref --merged $original_branch --format="%(refname:short)" refs/heads \
+)"
+unmerged_branches="$( \
+    echo "$( \
+        comm -23 \
+        <(echo "$dpg_merged_branches") \
+        <(echo "$original_merged_branches") \
+    )" | sed "\|$dpg_branch|d"
+)"
+if [ -n "$unmerged_branches" ]; then
+    echo "Found unmerged branches for original:"
+    echo "$unmerged_branches"
+    exit 1
+fi
+
+echo "Original is aligned with doppelganger!"
+exit 0
+
