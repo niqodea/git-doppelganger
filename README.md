@@ -1,5 +1,5 @@
-# `git doppelganger`
-Git Doppelganger is a new program that combines the advantages of git rebase and git merge to provide a seamless way to clean up your Git history while still preserving it.
+# Git Doppelganger
+Git Doppelganger is a new program that combines the advantages of `git rebase` and `git merge` to provide a seamless way to clean up your Git history while still preserving it.
 
 With Git Doppelganger, you can work on a "doppelganger" branch that is a copy of your original branch in terms of the files, but not in terms of the history.
 This means you can freely rebase on the doppelganger branch to clean up your Git history, without affecting the history of the original branch.
