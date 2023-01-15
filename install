@@ -15,8 +15,13 @@ if [[
     exit 1
 fi
 
+echo "Installing Git Doppelganger on this machine..."
+
 src_dir=$(dirname $0)
 dst_dir="$HOME/.local/bin"
+
 cp $src_dir/git-dpg $dst_dir
 cp -r $src_dir/git-dpg-commands $dst_dir
+
+echo "Successfully installed Git Doppelganger!"
 
