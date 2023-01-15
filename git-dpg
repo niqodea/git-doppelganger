@@ -1,6 +1,6 @@
 #!/bin/bash
 
-commands_dir=$(dirname $0)/commands
+commands_dir=$(dirname $0)/git-dpg-commands
 
 command=$1
 
