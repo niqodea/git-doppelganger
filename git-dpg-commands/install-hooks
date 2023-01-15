@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -eu
+
+src_hooks_dir=$(dirname $0)/hooks
+dst_hooks_dir=$(git rev-parse --git-dir)/hooks
+echo "Installing doppelganger hooks in $dst_hooks_dir..."
+cp -r $src_hooks_dir/* $dst_hooks_dir
+echo "Successfully installed doppelganger hooks!"
+
