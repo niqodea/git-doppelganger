@@ -2,6 +2,25 @@
 
 set -eu
 
+while getopts "m:" opt; do
+    case $opt in
+        m)
+            mode="$OPTARG"
+            ;;
+        \?)
+            # Invalid option
+            exit 1
+            ;;
+        :)
+            # Option requires an argument
+            exit 1
+            ;;
+    esac
+done
+if [ -z ${mode+x} ]; then
+    mode="merge"  # Default
+fi
+
 dpg_suffix=".dpg"
 
 branch="$(git symbolic-ref --short HEAD)"
@@ -21,11 +40,24 @@ if ! git diff --staged --quiet; then
     exit 1
 fi
 
-git update-ref -m "Closing doppelganger" refs/heads/$original_branch $dpg_branch
+case $mode in
+    keep-original)
+        :  # Do nothing
+        ;;
+    keep-doppelganger)
+        git update-ref -m "Closing doppelganger" refs/heads/$original_branch $dpg_branch
+        ;;
+    merge)
+        tree=$(git rev-parse $original_branch^{tree})  # Even the doppelganger tree should work
+        merge_commit=$(git commit-tree -p $original_branch -p $dpg_branch -m "merge doppelganger" $tree)
+        git update-ref -m "Closing doppelganger" refs/heads/$original_branch $merge_commit
+        ;;
+    *)
+        >&2 echo "Error: Unknown close mode $mode"
+        exit 1
+        ;;
+esac
+
 git switch $original_branch
 git branch -D $dpg_branch
-
-# TODO: Implement other close strategies
-# - Merge the original and dpg in a single commit
-# - Discard doppelganger instead
 
