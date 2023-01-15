@@ -10,7 +10,7 @@ if [ -z "$command" ]; then
 fi
 
 if [ -f "$commands_dir/$command" ]; then
-    $commands_dir/$command
+    $commands_dir/$command "${@:2}"  # pass other arguments to the command
     exit 0
 else
     >&2 echo "Error: Doppelganger command "$command" does not exist"
