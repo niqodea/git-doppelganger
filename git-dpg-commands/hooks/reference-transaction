@@ -2,7 +2,7 @@
 
 set -eu
 
-utils_dir=$(dirname $0)/utils
+utils_dir=$(dirname $0)/dpg-utils
 
 if [ $1 != "committed" ]; then
     exit 0  # We only act after the reference changed
