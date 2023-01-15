@@ -9,11 +9,11 @@ if [ -z "$command" ]; then
     exit 1
 fi
 
-if [ -f $commands_dir/$command ]; then
+if [ -f "$commands_dir/$command" ]; then
     $commands_dir/$command
     exit 0
 else
-    >&2 echo "Error: Doppelganger command $command does not exist"
+    >&2 echo "Error: Doppelganger command "$command" does not exist"
     exit 1
 fi
 
