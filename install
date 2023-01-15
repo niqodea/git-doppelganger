@@ -19,5 +19,4 @@ src_dir=$(dirname $0)
 dst_dir="$HOME/.local/bin"
 cp $src_dir/git-dpg $dst_dir
 cp -r $src_dir/git-dpg-commands $dst_dir
-cp -r $src_dir/git-dpg-hooks $dst_dir
 
