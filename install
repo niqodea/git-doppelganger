@@ -9,17 +9,28 @@ if [[
         echo -e "$required_git_version\n$installed_git_version" | sort --version-sort | head -n 1
     ) != $required_git_version
 ]]; then
-    >&2 echo "Error: Could not install Git Doppelganger."
+    >&2 echo "Error: Could not install Git Doppelganger"
     >&2 echo "Required Git version: $required_git_version"
     >&2 echo "Installed Git version: $installed_git_version"
     exit 1
 fi
 
-echo "Installing Git Doppelganger on this machine..."
-
 src_dir=$(dirname $0)
 dst_dir="$HOME/.local/bin"
 
+if [[ ":$PATH:" != *":$dst_dir:"* ]]; then
+    >&2 echo "Error: Could not install Git Doppelganger"
+    >&2 echo "Entry $dst_dir does not appear in \$PATH"
+    >&2 echo
+    >&2 echo "The following commands will add it to \$PATH if using zsh:"
+    >&2 echo "echo 'export PATH=\$PATH:$dst_dir' >> ~/.zshrc"
+    >&2 echo "source ~/.zshrc"
+    exit 1
+fi
+
+echo "Installing Git Doppelganger on this machine..."
+
+mkdir -p $dst_dir
 cp $src_dir/git-dpg $dst_dir
 cp -r $src_dir/git-dpg-commands $dst_dir
 
